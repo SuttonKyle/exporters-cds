@@ -40,7 +40,7 @@
     {
         "key": "tokenNameStructure",
         "type": "enum",
-        "default": "pathAndName",
+        "default": "nameOnly",
         "title": "Token name structure",
         "description": "Control what parts are included in the exporter token name.",
         "category": "Token names",

@@ -1,7 +1,7 @@
 import { FileHelper, ThemeHelper, FileNameHelper, GeneralHelper } from "@supernovaio/export-utils"
 import { OutputTextFile, Token, TokenGroup, TokenType } from "@supernovaio/sdk-exporters"
 import { exportConfiguration } from ".."
-import { convertedToken } from "../content/token"
+import { convertedToken, isRadixColorToken } from "../content/token"
 import { TokenTheme } from "@supernovaio/sdk-exporters"
 import { FileStructure } from "../../config"
 import { DesignSystemCollection } from "@supernovaio/sdk-exporters/build/sdk-typescript/src/model/base/SDKDesignSystemCollection"
@@ -64,6 +64,11 @@ export function styleOutputFile(
 
   // Get all tokens matching the specified token type (colors, typography, etc.)
   let tokensOfType = tokens.filter((token) => token.tokenType === type)
+
+  // Skip generating radix color tokens
+  if (type === TokenType.color) {
+    tokensOfType = tokensOfType.filter(token => !isRadixColorToken(token, tokenGroups))
+  }
 
   // For theme files: filter tokens to only include those that are themed
   if (themePath && theme && exportConfiguration.exportOnlyThemedTokens) {
@@ -132,6 +137,9 @@ function generateCombinedStyleFile(
   tokenCollections: Array<DesignSystemCollection> = []
 ): OutputTextFile | null {
   let processedTokens = tokens
+
+  // Skip generating radix color tokens
+  processedTokens = processedTokens.filter(token => !isRadixColorToken(token, tokenGroups))
 
   // For theme files: filter tokens to only include those that are themed
   if (themePath && theme && exportConfiguration.exportOnlyThemedTokens) {

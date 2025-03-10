@@ -1,7 +1,7 @@
 {
     "id": "supernovaio.exporter-css",
-    "name": "CSS",
-    "description": "Export your design tokens into CSS variables and definitions.",
+    "name": "CSS CDS",
+    "description": "Export your design tokens into CSS variables and definitions using Radix colors.",
     "author": "Jiri Trecak",
     "organization": "Supernova.io",
     "homepage": "https://supernova.io",

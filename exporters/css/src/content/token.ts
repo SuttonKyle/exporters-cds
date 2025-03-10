@@ -57,6 +57,54 @@ export function convertedToken(
   }
 }
 
+
+const getFullPath = (parent: TokenGroup) => {
+  const parentPath = [...parent.path]
+  if (!parent.isRoot) {
+    parentPath.push(parent.name)
+  }
+  return parentPath;
+}
+
+const isCoreColor = (parentPath: string[]) => {
+  return parentPath[0] === "core-color";
+}
+
+const isRadixColor = (parentPath: string[]) => {
+  return (isCoreColor(parentPath) && parentPath[1] !== "custom")
+}
+
+export const isRadixColorToken = (
+  token: Token, 
+  tokenGroups: Array<TokenGroup>,
+) => {
+  const parent = tokenGroups.find((group) => group.id === token.parentGroupId)!
+  const parentPath = getFullPath(parent);
+  return isRadixColor(parentPath)
+}
+
+export const isCustomColorToken = (
+  token: Token, 
+  tokenGroups: Array<TokenGroup>,
+) => {
+  const parent = tokenGroups.find((group) => group.id === token.parentGroupId)!
+  const parentPath = getFullPath(parent)
+  return isCoreColor(parentPath) && parentPath[1] === "custom";
+}
+
+const radixColorVariableName = (token: Token, parent: TokenGroup) => {
+  const parentTokenName = parent.name === "alpha" ? [...parent.path].pop() : parent.name;
+  const tokenName = parent.name === "alpha" ? `a${token.name}` : token.name;
+  return NamingHelper.codeSafeVariableNameForToken(
+    { name: tokenName }, 
+    exportConfiguration.tokenNameStyle, 
+    { name: parentTokenName ?? "", path: [], isRoot: false }, 
+    null,
+    null,
+    exportConfiguration.globalNamePrefix
+  )
+}
+
 /**
  * Generates a code-safe variable name for a token based on its properties and configuration.
  * Includes type-specific prefix and considers token hierarchy and collection.
@@ -73,6 +121,11 @@ function tokenVariableName(
 ): string {
   const prefix = getTokenPrefix(token.tokenType)
   const parent = tokenGroups.find((group) => group.id === token.parentGroupId)!
+  const parentPath = getFullPath(parent);
+  
+  if (isRadixColor(parentPath)) {
+    return radixColorVariableName(token, parent);
+  }
 
   // Find collection if needed and exists
   let collection: DesignSystemCollection | null = null

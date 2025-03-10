@@ -215,7 +215,7 @@
     {
         "key": "generateIndexFile",
         "type": "boolean",
-        "default": true,
+        "default": false,
         "title": "Generate index file",
         "description": "Generate a file with imports for all base and theme style files.",
         "category": "Index file"

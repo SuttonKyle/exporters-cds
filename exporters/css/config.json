@@ -120,7 +120,7 @@
     {
         "key": "tokenType",
         "type": "enum",
-        "default": "all",
+        "default": "Color",
         "title": "Token Type",
         "description": "Token Type to Export",
         "category": "Token names",
@@ -129,11 +129,11 @@
                 "label": "All",
                 "description": "Export all token types"
             },
-            "color": {
+            "Color": {
                 "label": "Color",
                 "description": "Export only color tokens"
             },
-            "typography": {
+            "Typography": {
                 "label": "Typography",
                 "description": "Export only typography tokens"
             }

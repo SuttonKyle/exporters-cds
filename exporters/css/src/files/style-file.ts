@@ -1,7 +1,7 @@
 import { FileHelper, ThemeHelper, FileNameHelper, GeneralHelper } from "@supernovaio/export-utils"
-import { OutputTextFile, Token, TokenGroup, TokenType } from "@supernovaio/sdk-exporters"
+import { ColorToken, OutputTextFile, Token, TokenGroup, TokenType } from "@supernovaio/sdk-exporters"
 import { exportConfiguration } from ".."
-import { convertedToken, isCustomColorToken, isRadixColorToken } from "../content/token"
+import { convertedToken, getFullPath, isCustomColorToken, isRadixColor, isRadixColorToken } from "../content/token"
 import { TokenTheme } from "@supernovaio/sdk-exporters"
 import { FileStructure } from "../../config"
 import { DesignSystemCollection } from "@supernovaio/sdk-exporters/build/sdk-typescript/src/model/base/SDKDesignSystemCollection"
@@ -25,7 +25,6 @@ export function generateStyleFiles(
   if (!exportConfiguration.exportBaseValues && !themePath) {
     return []
   }
-
   // For single file output
   if (exportConfiguration.fileStructure === FileStructure.SingleFile) {
     const result = generateCombinedStyleFile(tokens, tokenGroups, themePath, theme)
@@ -34,10 +33,39 @@ export function generateStyleFiles(
 
   // For separate files by type (existing logic)
   const types = exportConfiguration.tokenType === "all" ? [...new Set(tokens.map(token => token.tokenType))] : [exportConfiguration.tokenType]
-  return types
+  return [...types
     .map(type => styleOutputFile(type, tokens, tokenGroups, themePath, theme, tokenCollections))
-    .filter((file): file is OutputTextFile => file !== null)
+    .filter((file): file is OutputTextFile => file !== null)]
 }
+
+export const generateRadixColorsFile = (tokens: Array<Token>, tokenGroups: Array<TokenGroup>): OutputTextFile => {    
+  const radixColorsToImport = Array.from(new Set(tokens.map((token) => 
+    (token as ColorToken).value.referencedTokenId
+  ))).filter((id: string | null): id is string => id !== null);
+  // Create a map of all tokens by ID for reference resolution
+  const mappedTokens = new Map(tokens.map((token) => [token.id, token]))
+  const radixColorImports = Array.from(new Set(radixColorsToImport.map(id => {
+    const color = mappedTokens.get(id);
+    const parent = tokenGroups.find((group) => group.id === color?.parentGroupId);
+    if (parent) {
+      const tokenPath = getFullPath(parent);
+      if (isRadixColor(tokenPath)) {
+        const isAlpha = parent.name === "alpha"
+        const parentColor = isAlpha ? [...parent.path].pop() : parent.name;
+        const defaultVariant = `${parentColor}${isAlpha ? "-alpha" : ""}`;
+        const darkVariant = `${parentColor}-dark${isAlpha ? "-alpha" : ""}`;
+        return `@import '@radix-ui/colors/${defaultVariant}.css';\n@import '@radix-ui/colors/${darkVariant}.css';`;
+      }
+    }
+  }))).join("\n");
+  
+    // Create and return the output file object
+    return FileHelper.createTextFile({
+      relativePath: exportConfiguration.baseStyleFilePath,
+      fileName: 'radix-colors.css',
+      content: radixColorImports,
+    })
+};
 
 /**
  * Generates a CSS output file for a specific token type, handling both base tokens and themed tokens

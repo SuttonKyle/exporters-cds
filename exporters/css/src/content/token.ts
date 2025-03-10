@@ -51,14 +51,14 @@ export function convertedToken(
 
   // Add description comment if enabled and description exists
   if (exportConfiguration.showDescriptions && token.description) {
-    return `${indentString}/* ${token.description.trim()} */\n${indentString}--${name}: ${value};`
+    return `${indentString}--${name}: ${value}; /* ${token.description.trim()} */`
   } else {
     return `${indentString}--${name}: ${value};`
   }
 }
 
 
-const getFullPath = (parent: TokenGroup) => {
+export const getFullPath = (parent: TokenGroup) => {
   const parentPath = [...parent.path]
   if (!parent.isRoot) {
     parentPath.push(parent.name)
@@ -66,15 +66,15 @@ const getFullPath = (parent: TokenGroup) => {
   return parentPath;
 }
 
-const isCoreColor = (parentPath: string[]) => {
+export const isCoreColor = (parentPath: string[]) => {
   return parentPath[0] === "core-color";
 }
 
-const isRadixColor = (parentPath: string[]) => {
+export const isRadixColor = (parentPath: string[]) => {
   return (isCoreColor(parentPath) && parentPath[1] !== "custom")
 }
 
-const isCustomColor = (parentPath: string[]) => {
+export const isCustomColor = (parentPath: string[]) => {
   return (isCoreColor(parentPath) && parentPath[1] === "custom")
 }
 

@@ -118,6 +118,28 @@
         }
     },
     {
+        "key": "tokenType",
+        "type": "enum",
+        "default": "all",
+        "title": "Token Type",
+        "description": "Token Type to Export",
+        "category": "Token names",
+        "options": {
+            "all": {
+                "label": "All",
+                "description": "Export all token types"
+            },
+            "color": {
+                "label": "Color",
+                "description": "Export only color tokens"
+            },
+            "typography": {
+                "label": "Typography",
+                "description": "Export only typography tokens"
+            }
+        }
+    },
+    {
         "key": "forceRemUnit",
         "type": "boolean",
         "default": false,

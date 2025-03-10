@@ -1,7 +1,7 @@
 import { FileHelper, ThemeHelper, FileNameHelper, GeneralHelper } from "@supernovaio/export-utils"
 import { OutputTextFile, Token, TokenGroup, TokenType } from "@supernovaio/sdk-exporters"
 import { exportConfiguration } from ".."
-import { convertedToken, isRadixColorToken } from "../content/token"
+import { convertedToken, isCustomColorToken, isRadixColorToken } from "../content/token"
 import { TokenTheme } from "@supernovaio/sdk-exporters"
 import { FileStructure } from "../../config"
 import { DesignSystemCollection } from "@supernovaio/sdk-exporters/build/sdk-typescript/src/model/base/SDKDesignSystemCollection"
@@ -33,7 +33,7 @@ export function generateStyleFiles(
   }
 
   // For separate files by type (existing logic)
-  const types = [...new Set(tokens.map(token => token.tokenType))]
+  const types = exportConfiguration.tokenType === "all" ? [...new Set(tokens.map(token => token.tokenType))] : [exportConfiguration.tokenType]
   return types
     .map(type => styleOutputFile(type, tokens, tokenGroups, themePath, theme, tokenCollections))
     .filter((file): file is OutputTextFile => file !== null)
@@ -65,15 +65,21 @@ export function styleOutputFile(
   // Get all tokens matching the specified token type (colors, typography, etc.)
   let tokensOfType = tokens.filter((token) => token.tokenType === type)
 
-  // Skip generating radix color tokens
-  if (type === TokenType.color) {
-    tokensOfType = tokensOfType.filter(token => !isRadixColorToken(token, tokenGroups))
+  // only generate custom color tokens in theme files
+  if (themePath && theme) {
+    tokensOfType = tokensOfType.filter(token => isCustomColorToken(token, tokenGroups))
+  } else {
+    // Skip generating radix color tokens in base file
+    if (type === TokenType.color) {
+      tokensOfType = tokensOfType.filter(token => !isRadixColorToken(token, tokenGroups))
+      tokensOfType = tokensOfType.filter(token => !isCustomColorToken(token, tokenGroups))
+    }
   }
 
   // For theme files: filter tokens to only include those that are themed
   if (themePath && theme && exportConfiguration.exportOnlyThemedTokens) {
     tokensOfType = ThemeHelper.filterThemedTokens(tokensOfType, theme)
-    
+
     // Skip generating theme file if no tokens are themed for this type
     if (tokensOfType.length === 0) {
       return null

@@ -76,4 +76,6 @@ export type ExporterConfiguration = {
   fileStructure: FileStructure
   /** Controls what parts are included in the token name */
   tokenNameStructure: TokenNameStructure
+  /** Controls which token types are exported */
+  tokenType: TokenType | "all";
 }

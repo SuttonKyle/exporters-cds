@@ -74,6 +74,10 @@ const isRadixColor = (parentPath: string[]) => {
   return (isCoreColor(parentPath) && parentPath[1] !== "custom")
 }
 
+const isCustomColor = (parentPath: string[]) => {
+  return (isCoreColor(parentPath) && parentPath[1] === "custom")
+}
+
 export const isRadixColorToken = (
   token: Token, 
   tokenGroups: Array<TokenGroup>,
@@ -105,6 +109,17 @@ const radixColorVariableName = (token: Token, parent: TokenGroup) => {
   )
 }
 
+const customColorVariableName = (token: Token) => {
+  return NamingHelper.codeSafeVariableNameForToken(
+    token, 
+    exportConfiguration.tokenNameStyle, 
+    null,
+    null,
+    null,
+    exportConfiguration.globalNamePrefix
+  )
+}
+
 /**
  * Generates a code-safe variable name for a token based on its properties and configuration.
  * Includes type-specific prefix and considers token hierarchy and collection.
@@ -122,9 +137,13 @@ function tokenVariableName(
   const prefix = getTokenPrefix(token.tokenType)
   const parent = tokenGroups.find((group) => group.id === token.parentGroupId)!
   const parentPath = getFullPath(parent);
-  
+
   if (isRadixColor(parentPath)) {
     return radixColorVariableName(token, parent);
+  }
+
+  if (isCustomColor(parentPath)) {
+    return customColorVariableName(token);
   }
 
   // Find collection if needed and exists

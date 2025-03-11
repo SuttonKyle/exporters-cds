@@ -177,7 +177,7 @@
     {
         "key": "exportThemesAs",
         "type": "enum",
-        "default": "separateFiles",
+        "default": "customColorsOnly",
         "title": "Theme export format",
         "description": "Control how themes are exported in the CSS files.",
         "category": "Themes",
@@ -193,6 +193,10 @@
             "mergedTheme": {
                 "label": "Merged theme file",
                 "description": "Generate theme variables with all themes applied together"
+            },
+            "customColorsOnly": {
+                "label": "Custom Colors Only",
+                "description": "Apply themes only to custom colors in a separate file"
             }
         }
     },
@@ -271,7 +275,7 @@
     {
         "key": "baseStyleFilePath",
         "type": "string",
-        "default": "./base",
+        "default": "./",
         "title": "Path to base style files",
         "description": "All files will be written to this directory relative to export root.",
         "category": "Style files"
@@ -443,7 +447,7 @@
     {
         "key": "cssSelector",
         "type": "string",
-        "default": ":root",
+        "default": "@theme",
         "title": "CSS selector",
         "description": "CSS selector for base token variables (e.g. ':root' for global scope).",
         "category": "CSS selectors"
@@ -451,7 +455,7 @@
     {
         "key": "themeSelector",
         "type": "string",
-        "default": ".theme-{theme}",
+        "default": ".{theme}",
         "title": "CSS selector for themes",
         "description": "CSS selector for theme files. Use {theme} placeholder to insert theme name.",
         "category": "CSS selectors"

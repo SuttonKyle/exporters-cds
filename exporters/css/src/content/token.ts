@@ -97,12 +97,10 @@ export const isCustomColorToken = (
 }
 
 const radixColorVariableName = (token: Token, parent: TokenGroup) => {
-  const parentTokenName = parent.name === "alpha" ? [...parent.path].pop() : parent.name;
-  const tokenName = parent.name === "alpha" ? `a${token.name}` : token.name;
   return NamingHelper.codeSafeVariableNameForToken(
-    { name: tokenName }, 
+    token,
     exportConfiguration.tokenNameStyle, 
-    { name: parentTokenName ?? "", path: [], isRoot: false }, 
+    null,
     null,
     null,
     exportConfiguration.globalNamePrefix

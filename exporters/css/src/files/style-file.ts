@@ -38,33 +38,101 @@ export function generateStyleFiles(
     .filter((file): file is OutputTextFile => file !== null)]
 }
 
+/**
+ * Generates a CSS file importing all radix color tokens
+ * @param tokens - Array of all available tokens
+ * @param tokenGroups - Array of token groups for reference
+ * @returns OutputTextFile object
+ */
+
 export const generateRadixColorsFile = (tokens: Array<Token>, tokenGroups: Array<TokenGroup>): OutputTextFile => {    
   const radixColorsToImport = Array.from(new Set(tokens.map((token) => 
     (token as ColorToken).value.referencedTokenId
   ))).filter((id: string | null): id is string => id !== null);
+
   // Create a map of all tokens by ID for reference resolution
   const mappedTokens = new Map(tokens.map((token) => [token.id, token]))
   const radixColorImports = Array.from(new Set(radixColorsToImport.map(id => {
     const color = mappedTokens.get(id);
     const parent = tokenGroups.find((group) => group.id === color?.parentGroupId);
-    if (parent) {
+    if (color && parent) {
       const tokenPath = getFullPath(parent);
       if (isRadixColor(tokenPath)) {
-        const isAlpha = parent.name === "alpha"
-        const parentColor = isAlpha ? [...parent.path].pop() : parent.name;
-        const defaultVariant = `${parentColor}${isAlpha ? "-alpha" : ""}`;
-        const darkVariant = `${parentColor}-dark${isAlpha ? "-alpha" : ""}`;
+        const tokenParts = color.name.split("-")
+        const parentColor = tokenParts[0]
+        const isAlpha = tokenParts[1]?.startsWith("a")
+        if (parentColor === "white" || parentColor === "black") {
+          if (isAlpha) {
+            return `@import '@radix-ui/colors/${parentColor}-alpha.css';`;
+          }
+          else {
+            return "";
+          }
+        }
+        const defaultVariant = `${parentColor}${isAlpha ? "-alpha" : ""}`
+        const darkVariant = `${parentColor}-dark${isAlpha ? "-alpha" : ""}`
         return `@import '@radix-ui/colors/${defaultVariant}.css';\n@import '@radix-ui/colors/${darkVariant}.css';`;
       }
     }
-  }))).join("\n");
-  
-    // Create and return the output file object
-    return FileHelper.createTextFile({
-      relativePath: exportConfiguration.baseStyleFilePath,
-      fileName: 'radix-colors.css',
-      content: radixColorImports,
-    })
+  }))).filter(a => !!a).join("\n");
+
+  const content = exportConfiguration.showGeneratedFileDisclaimer
+    ? GeneralHelper.addDisclaimer(exportConfiguration.disclaimer, radixColorImports)
+    : radixColorImports;
+
+  // Create and return the output file object
+  return FileHelper.createTextFile({
+    relativePath: exportConfiguration.baseStyleFilePath,
+    fileName: 'radix-colors.css',
+    content,
+  })
+};
+
+/**
+ * Generates a CSS file with custom colors
+ * @param baseTokens - Array of all available tokens
+ * @param tokensByTheme - Map of tokens by theme
+ * @param tokenGroups - Array of token groups for reference
+ * @param tokenCollections - Array of token collections for reference
+ * @returns OutputTextFile object
+ */
+
+export const generateCustomColorsFile = (
+  baseTokens: Array<Token>,
+  tokensByTheme: Map<string, Array<Token>>,
+  tokenGroups: Array<TokenGroup>,
+  tokenCollections: Array<DesignSystemCollection> = []
+): OutputTextFile => {
+  const baseCustomColors = baseTokens.filter(token => isCustomColorToken(token, tokenGroups))
+  const tokenMap = new Map(baseTokens.map((token) => [token.id, token]))
+  const indentString = GeneralHelper.indent(exportConfiguration.indent)
+  const baseVariables = baseCustomColors.map((token) => 
+    `${indentString}${convertedToken(token, tokenMap, tokenGroups, tokenCollections)}`
+  ).join("\n")
+  const baseSelector = `:root`;
+  const variableContent = [`${indentString}${baseSelector} {\n${baseVariables}\n${indentString}}`];
+
+  for (const [theme, tokens] of tokensByTheme) {
+    const customColors = tokens.filter(token => isCustomColorToken(token, tokenGroups))
+    const customTokenMap = new Map(tokens.map((token) => [token.id, token]))
+    const themeVariables = customColors.map((token) => 
+      `${indentString}${convertedToken(token, customTokenMap, tokenGroups, tokenCollections)}`
+    ).join("\n")
+    const themeSelector = exportConfiguration.themeSelector.replace('{theme}', theme);
+    variableContent.push(`${indentString}${themeSelector} {\n${themeVariables}\n${indentString}}`);
+  }
+
+  const baseContent = `@layer base {\n${variableContent.join("\n\n")}\n}`;
+  const content = exportConfiguration.showGeneratedFileDisclaimer
+    ? GeneralHelper.addDisclaimer(exportConfiguration.disclaimer, baseContent)
+    : baseContent;
+
+  // Create and return the output file object
+  return FileHelper.createTextFile({
+    relativePath: exportConfiguration.baseStyleFilePath,
+    fileName: 'custom-colors.css',
+    content,
+  })
 };
 
 /**
@@ -93,15 +161,10 @@ export function styleOutputFile(
   // Get all tokens matching the specified token type (colors, typography, etc.)
   let tokensOfType = tokens.filter((token) => token.tokenType === type)
 
-  // only generate custom color tokens in theme files
-  if (themePath && theme) {
-    tokensOfType = tokensOfType.filter(token => isCustomColorToken(token, tokenGroups))
-  } else {
-    // Skip generating radix color tokens in base file
-    if (type === TokenType.color) {
-      tokensOfType = tokensOfType.filter(token => !isRadixColorToken(token, tokenGroups))
-      tokensOfType = tokensOfType.filter(token => !isCustomColorToken(token, tokenGroups))
-    }
+  // Skip generating radix color tokens in base file
+  if (type === TokenType.color) {
+    tokensOfType = tokensOfType.filter(token => !isRadixColorToken(token, tokenGroups))
+    tokensOfType = tokensOfType.filter(token => !isCustomColorToken(token, tokenGroups))
   }
 
   // For theme files: filter tokens to only include those that are themed
@@ -128,9 +191,12 @@ export function styleOutputFile(
   const selector = themePath 
     ? exportConfiguration.themeSelector.replace('{theme}', themePath)
     : exportConfiguration.cssSelector
+
+  // Construct imports for radix and custom colors
+  const imports = `@import './radix-colors.css';\n@import './custom-colors.css';\n`
   
   // Construct the file content with CSS variables wrapped in selector
-  let content = `${selector} {\n${cssVariables}\n}`
+  let content = `${imports}\n${selector} {\n${cssVariables}\n}`
   
   // Optionally add generated file disclaimer
   if (exportConfiguration.showGeneratedFileDisclaimer) {

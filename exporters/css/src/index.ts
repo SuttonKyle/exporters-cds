@@ -1,7 +1,7 @@
-import { Supernova, PulsarContext, RemoteVersionIdentifier, AnyOutputFile, TokenType } from "@supernovaio/sdk-exporters"
+import { Supernova, PulsarContext, RemoteVersionIdentifier, AnyOutputFile, TokenType, TokenTheme, Token } from "@supernovaio/sdk-exporters"
 import { ExporterConfiguration, ThemeExportStyle } from "../config"
 import { indexOutputFile } from "./files/index-file"
-import { styleOutputFile, generateStyleFiles, generateRadixColorsFile } from "./files/style-file"
+import { styleOutputFile, generateStyleFiles, generateRadixColorsFile, generateCustomColorsFile } from "./files/style-file"
 import { ThemeHelper } from "@supernovaio/export-utils"
 
 /** Exporter configuration from the resolved default configuration and user overrides */
@@ -42,7 +42,7 @@ Pulsar.export(async (sdk: Supernova, context: PulsarContext): Promise<Array<AnyO
   let tokenGroups = await sdk.tokens.getTokenGroups(remoteVersionIdentifier)
   let tokenCollections = await sdk.tokens.getTokenCollections(remoteVersionIdentifier)
 
-  const radixColorsFile = generateRadixColorsFile(tokens.filter(token => token.tokenType === TokenType.color), tokenGroups);
+  const radixColorsFile = generateRadixColorsFile(tokens.filter(token => token.tokenType === TokenType.color), tokenGroups)
 
   // Filter by brand if specified
   if (context.brandId) {
@@ -56,6 +56,8 @@ Pulsar.export(async (sdk: Supernova, context: PulsarContext): Promise<Array<AnyO
     tokenGroups = tokenGroups.filter((tokenGroup) => tokenGroup.brandId === brand.id)
   }
 
+  const tokensByTheme = new Map<string, Array<Token>>();
+
   // Process themes if specified
   if (context.themeIds && context.themeIds.length > 0) {
     const themes = await sdk.tokens.getTokenThemes(remoteVersionIdentifier)
@@ -68,6 +70,13 @@ Pulsar.export(async (sdk: Supernova, context: PulsarContext): Promise<Array<AnyO
       }
       return theme
     })
+
+    for (const theme of themesToApply) {
+      tokensByTheme.set(
+        ThemeHelper.getThemeIdentifier(theme), sdk.tokens.computeTokensByApplyingThemes(tokens, tokens, [theme])
+      )
+    }
+    const customColorsFile = generateCustomColorsFile(tokens, tokensByTheme, tokenGroups, tokenCollections);
     
     // Handle different theme export modes
     switch (exportConfiguration.exportThemesAs) {
@@ -78,6 +87,7 @@ Pulsar.export(async (sdk: Supernova, context: PulsarContext): Promise<Array<AnyO
           ...generateStyleFiles(tokens, tokenGroups, '', undefined, tokenCollections),
           indexOutputFile(tokens),
           radixColorsFile,
+          customColorsFile,
         ]
         return processOutputFiles(directFiles)
 
@@ -99,7 +109,13 @@ Pulsar.export(async (sdk: Supernova, context: PulsarContext): Promise<Array<AnyO
           ? generateStyleFiles(tokens, tokenGroups, '', undefined, tokenCollections)
           : []
 
-        const separateFiles = [...baseFiles, ...themeFiles, indexOutputFile(tokens, themesToApply), radixColorsFile]
+        const separateFiles = [
+          ...baseFiles,
+          ...themeFiles,
+          indexOutputFile(tokens, themesToApply),
+          radixColorsFile,
+          customColorsFile,
+        ]
         return processOutputFiles(separateFiles)
 
       case 'mergedTheme':
@@ -118,10 +134,30 @@ Pulsar.export(async (sdk: Supernova, context: PulsarContext): Promise<Array<AnyO
           tokenCollections
         )
 
-        const mergedFiles = [...baseTokenFiles, ...mergedThemeFiles, indexOutputFile(tokens, ['themed']), radixColorsFile]
+        const mergedFiles = [
+          ...baseTokenFiles,
+          ...mergedThemeFiles,
+          indexOutputFile(tokens, ['themed']),
+          radixColorsFile,
+          customColorsFile
+        ]
         return processOutputFiles(mergedFiles)
+
+      case 'customColorsOnly':
+        const files = [
+          ...(exportConfiguration.exportBaseValues
+            ? generateStyleFiles(tokens, tokenGroups, '', undefined, tokenCollections)
+            : []),
+          indexOutputFile(tokens),
+          radixColorsFile,
+          customColorsFile,
+        ]
+        return processOutputFiles(files)
+
     }
   }
+
+  const customColorsFile = generateCustomColorsFile(tokens, tokensByTheme, tokenGroups, tokenCollections);
 
   // Default case: Generate files without themes
   const defaultFiles = [
@@ -130,6 +166,7 @@ Pulsar.export(async (sdk: Supernova, context: PulsarContext): Promise<Array<AnyO
       : []),
     indexOutputFile(tokens),
     radixColorsFile,
+    customColorsFile,
   ]
   return processOutputFiles(defaultFiles)
 })
